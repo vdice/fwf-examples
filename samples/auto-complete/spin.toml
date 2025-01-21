@@ -1,0 +1,34 @@
+spin_manifest_version = 2
+
+[application]
+name = "auto-complete"
+version = "0.1.0"
+authors = ["Thorsten Hans <thorsten.hans@fermyon.com>"]
+description = ""
+
+[[trigger.http]]
+route = "/..."
+component = "autocomplete"
+
+[[trigger.http]]
+route = { private = true }
+component = "origin"
+
+[component.autocomplete]
+source = "autocomplete/target/wasm32-wasip1/release/autocomplete.wasm"
+allowed_outbound_hosts = ["http://origin.spin.internal"]
+
+[component.autocomplete.build]
+command = "cargo build --target wasm32-wasip1 --release"
+workdir = "autocomplete"
+watch = ["src/**/*.rs", "Cargo.toml"]
+
+[component.origin]
+source = "origin/target/wasm32-wasip1/release/origin.wasm"
+allowed_outbound_hosts = []
+key_value_stores = ["default"]
+
+[component.origin.build]
+command = "cargo build --target wasm32-wasip1 --release"
+workdir = "origin"
+watch = ["src/**/*.rs", "Cargo.toml"]
