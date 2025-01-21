@@ -1,7 +1,7 @@
 spin_manifest_version = 2
 
 [application]
-name = "ab-testing"
+name = "ab-testing-kv"
 version = "0.1.0"
 authors = ["Thorsten Hans <thorsten.hans@fermyon.com>"]
 description = ""
@@ -11,19 +11,16 @@ route = "/..."
 component = "traffic-router"
 
 [[trigger.http]]
-route = { private = true }
+route = "/origin-a/..."
 component = "origin-a"
 
 [[trigger.http]]
-route = { private = true }
+route = "/origin-b/..."
 component = "origin-b"
 
 [component.traffic-router]
 source = "traffic-router/target/wasm32-wasip1/release/traffic_router.wasm"
-allowed_outbound_hosts = [
-  "http://origin-a.spin.internal",
-  "http://origin-b.spin.internal",
-]
+allowed_outbound_hosts = ["http://self", "https://self"]
 key_value_stores = ["default"]
 
 [component.traffic-router.build]
