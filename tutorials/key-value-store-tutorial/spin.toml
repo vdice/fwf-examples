@@ -1,0 +1,21 @@
+spin_manifest_version = 2
+
+[application]
+authors = ["Fermyon Engineering <engineering@fermyon.com>"]
+description = ""
+name = "hello-key-value-store"
+version = "0.1.0"
+
+[[trigger.http]]
+route = "/..."
+component = "hello-key-value-store"
+
+[component.hello-key-value-store]
+source = "target/hello-key-value-store.wasm"
+exclude_files = ["**/node_modules"]
+key_value_stores = ["default"]
+allowed_outbound_hosts = []
+
+[component.hello-key-value-store.build]
+command = "npm run build"
+watch = ["src/**/*.ts", "package.json"]
