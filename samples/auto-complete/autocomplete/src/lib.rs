@@ -21,10 +21,7 @@ async fn handle_autocomplete(req: Request) -> anyhow::Result<impl IntoResponse> 
                 .build())
         }
         None => {
-            let origin_url = format!(
-                "http://origin.spin.internal/{}",
-                req.path_and_query().unwrap_or_default()
-            );
+            let origin_url = format!("/origin/{}", req.path_and_query().unwrap_or_default());
             let origin_request =
                 RequestBuilder::new(spin_sdk::http::Method::Get, origin_url).build();
             let origin_respone: Response = send(origin_request).await?;
