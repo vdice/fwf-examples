@@ -1,0 +1,20 @@
+spin_manifest_version = 2
+
+[application]
+name = "validate-promo-codes"
+version = "0.1.0"
+authors = ["Thorsten Hans <thorsten.hans@fermyon.com>"]
+description = ""
+
+[[trigger.http]]
+route = "/..."
+component = "validate-promo-codes"
+
+[component.validate-promo-codes]
+source = "main.wasm"
+allowed_outbound_hosts = []
+key_value_stores = ["default"]
+
+[component.validate-promo-codes.build]
+command = "tinygo build -target=wasip1 -scheduler=none -buildmode=c-shared -no-debug -o main.wasm main.go"
+watch = ["**/*.go", "go.mod"]
