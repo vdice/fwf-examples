@@ -23,4 +23,4 @@ origin = "{{ origin }}"
 
 [component.response-header-modification.build]
 command = "npm install && npm run build"
-watch = ["src/**/*.ts", "package.json"]
+watch = ["src/**/*.js", "package.json"]
