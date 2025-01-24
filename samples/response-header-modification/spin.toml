@@ -1,0 +1,26 @@
+spin_manifest_version = 2
+
+[application]
+authors = ["Thorsten Hans <thorsten.hans@fermyon.com>"]
+description = ""
+name = "response-header-modification"
+version = "0.1.0"
+
+[variables]
+origin = { default = "https://swapi.dev" }
+
+[[trigger.http]]
+route = "/..."
+component = "response-header-modification"
+
+[component.response-header-modification]
+source = "dist/response-header-modification.wasm"
+exclude_files = ["**/node_modules"]
+allowed_outbound_hosts = ["https://swapi.dev/"]
+
+[component.response-header-modification.variables]
+origin = "{{ origin }}"
+
+[component.response-header-modification.build]
+command = "npm install && npm run build"
+watch = ["src/**/*.js", "package.json"]
