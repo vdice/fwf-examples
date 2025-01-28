@@ -16,23 +16,11 @@ This will store the informational responses and page contents for web pages.
 
 This function will query the database based on the path, return the early hints value as 103 informational response, then stream the page contents.
 
-### Building and running locally
 
 ```
+$ spin build
 $ export SPIN_VARIABLE_HARPER_AUTH_HEADER="Basic <base64 user:password for the HarperDB instance>"
 $ export SPIN_VARIBLE_HARPER_URL="https://your-harperdb-instance"
-$ spin build && spin up
-Logging component stdio to ".spin/logs/"
-
-Serving http://127.0.0.1:3000
-Available Routes:
-  early-rs: http://127.0.0.1:3000 (wildcard)
-```
-
-
-### Deploying to Fermyon Wasm Functions
-
-```
 $ spin aka deploy --variable harper_url=$SPIN_VARIABLE_HARPER_URL --variable harper_auth_header=$SPIN_VARIABLE_HARPER_AUTH_HEADER
 Waiting for application to be ready... ready
 
