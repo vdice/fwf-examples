@@ -1,0 +1,8 @@
+node_modules
+dist
+target
+.spin/
+dist.js
+.spin-aka/
+build/bundle.js
+build/bundle.js.checksum
