@@ -15,7 +15,6 @@ Behind the covers, [ip-api.com](https://ip-api.com) is used to lookup the countr
 Once you've cloned the repository and moved to the `./samples/block-by-country`, install the dependencies, build and run the app:
 
 ```console
-npm install
 spin build
 spin aka deploy
 ```

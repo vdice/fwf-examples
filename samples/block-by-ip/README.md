@@ -12,7 +12,6 @@ The route `/` uses the `blockByIp` middleware to validate incoming requests agai
 Once you've cloned the repository and moved to the `./samples/block-by-ip`, install the dependencies, build and run the app:
 
 ```console
-npm install
 spin build
 spin up
 ```
