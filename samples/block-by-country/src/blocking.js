@@ -1,13 +1,11 @@
 import { Kv } from "@fermyon/spin-sdk";
 import { getClientAddressFromRequest, cleanupIpAddress } from "./helpers";
 
-const blockByCountry = async (_metadata, request, res) => {
+const blockByCountry = async (request) => {
   const clientAddress = getClientAddressFromRequest(request);
 
   if (!clientAddress) {
-    res.status(401);
-    res.send("Could not determine Country. Request will be blocked");
-    return;
+    return new Response("Could not determine client ip address", { status: 401 });
   }
   const blocklist = loadBlocklist();
   const ip = cleanupIpAddress(clientAddress);
@@ -16,9 +14,7 @@ const blockByCountry = async (_metadata, request, res) => {
   const details = await response.json();
 
   if (blocklist.indexOf(details.country) > -1) {
-    res.status(401);
-    res.send(`Sorry, your Country (${details.country}) is blocked`);
-    return;
+    return new Response(`Sorry, your Country (${details.country}) is blocked`, { status: 401 });
   }
 }
 

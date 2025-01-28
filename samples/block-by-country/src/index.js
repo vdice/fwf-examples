@@ -1,85 +1,63 @@
-import { Router } from "@fermyon/spin-sdk";
+// https://itty.dev/itty-router/routers/autorouter
+import { AutoRouter } from 'itty-router';
 import { blockByCountry, loadBlocklist, storeBlocklist } from "./blocking";
 import { getClientAddressFromRequest, cleanupIpAddress } from "./helpers";
 
-let router = Router();
+let router = AutoRouter();
 
-router.get("/", blockByCountry, (_, _req, res) => { handleGetData(res) });
-router.get("/admin/blocked-countries", (_, _req, res) => handleGetBlockList(res));
-router.post("/admin/blocked-countries", (_, req, res) => handleAddCountryToBlocklist(req, res))
-router.delete("/admin/blocked-countries", (_, _req, res) => handleClearBlocklist(res))
-router.all("*", (_, _req, res) => handleNotFound(res));
+// Route ordering matters, the first route that matches will be used
+// Any route that does not return will be treated as a middleware
+// Any unmatched route will return a 404
+router
+    .get("/", blockByCountry, () => handleGetData)
+    .get("/admin/blocked-countries", () => handleGetBlockList)
+    .post("/admin/blocked-countries", (req) => handleAddCountryToBlocklist(req))
+    .delete("/admin/blocked-countries", () => handleClearBlocklist)
 
-export async function handler(req, res) {
-  await router.handleRequest(req, res);
-}
+//@ts-ignore
+addEventListener('fetch', async (event) => {
+    event.respondWith(router.fetch(event.request));
+});
+
 
 function handleGetData(res) {
-  res.status(200);
-  res.set({
-    "content-type": "application/json"
-  });
-  res.send(JSON.stringify({
-    message: "If you can read this, you've successfully passed the blocking mechanism."
-  }));
+    return new Response(JSON.stringify({ message: "If you can read this, you've successfully passed the blocking mechanism." }), { status: 200, headers: { "content-type": "application/json" } });
 }
 
 function handleGetBlockList(res) {
-  const blocklist = loadBlocklist();
-  res.status(200);
-  res.set({
-    "content-type": "application/json"
-  });
-
-  if (!blocklist) {
-    res.send(JSON.stringify([]));
-    return;
-  }
-  res.send(JSON.stringify(blocklist));
+    const blocklist = loadBlocklist();
+    return new Response(JSON.stringify(blocklist || []), { status: 200, headers: { "content-type": "application/json" } });
 }
 
-async function handleAddCountryToBlocklist(req, res) {
-  const clientAddress = getClientAddressFromRequest(req);
-  if (!clientAddress) {
-    res.status(500);
-    res.send("Could not determine client ip address");
-    return;
-  }
-  const ip = cleanupIpAddress(clientAddress);
-  const response = await fetch(`http://ip-api.com/json/${ip}`);
-  const details = await response.json();
+async function handleAddCountryToBlocklist(req) {
+    const clientAddress = getClientAddressFromRequest(req);
+    if (!clientAddress) {
+        return new Response("Could not determine client ip address", { status: 500 });
+    }
+    const ip = cleanupIpAddress(clientAddress);
+    const response = await fetch(`http://ip-api.com/json/${ip}`);
+    const details = await response.json();
 
-  let blocklist = loadBlocklist();
-  if (blocklist.indexOf(details.country) > -1) {
-    res.status(200);
-    res.set({
-      "content-type": "application/json"
-    });
-    res.send(JSON.stringify({
-      message: `Your country (${details.country}) is already on the blocklist`
-    }));
-    return;
-  }
+    let blocklist = loadBlocklist();
+    if (blocklist.indexOf(details.country) > -1) {
+        return new Response(JSON.stringify({
+            message: `Your country (${details.country}) is already on the blocklist`
+        }), { status: 200, headers: { "content-type": "application/json" } });
+    }
 
-  blocklist.push(details.country);
-  storeBlocklist(blocklist);
-  res.status(200);
-  res.set({
-    "content-type": "application/json"
-  });
-  res.send(JSON.stringify({
-    message: `Your country (${details.country}) has been added to the blocklist`
-  }));
+    blocklist.push(details.country);
+    storeBlocklist(blocklist);
+    return new Response(JSON.stringify({
+        message: `Your country (${details.country}) has been added to the blocklist`
+    }), { status: 200, headers: { "content-type": "application/json" } });
+
 }
 
-function handleClearBlocklist(res) {
-  storeBlocklist([]);
-  res.status(204);
-  res.end();
+function handleClearBlocklist() {
+    storeBlocklist([]);
+    return new Response(null, { status: 204 });
 }
 
-function handleNotFound(res) {
-  res.status(404);
-  res.send("Not found");
+function handleNotFound() {
+    return new Response("Not found", { status: 404 });
 }
-
