@@ -1,40 +1,39 @@
-import { Router, Kv } from '@fermyon/spin-sdk';
+// https://itty.dev/itty-router/routers/autorouter
+import { AutoRouter } from 'itty-router';
+import { Kv } from '@fermyon/spin-sdk';
 
-const router = Router();
 const decoder = new TextDecoder();
+let router = AutoRouter();
 
-router.get("/get/:key", (metadata, _, res) => { handleGetValue(res, metadata.params.key) });
-router.post("/set/:key", async (metadata, req, res) => { handleSetValue(res, metadata.params.key, await req.arrayBuffer()) });
+// Route ordering matters, the first route that matches will be used
+// Any route that does not return will be treated as a middleware
+// Any unmatched route will return a 404
+router
+    .get("/get/:key", ({ key }) => handleGetValue(key))
+    .post('/set/:key', async (req) => handleSetValue(req.params.key, await req.arrayBuffer()));
 
-export async function handler(req, res) {
-  await router.handleRequest(req, res);
+addEventListener('fetch', async (event) => {
+    event.respondWith(router.fetch(event.request));
+});
+
+
+function handleGetValue(key) {
+    const store = Kv.openDefault();
+    if (!store.exists(key)) {
+        return new Response(null, { status: 404 });
+    }
+    let found = store.getJson(key);
+    return new Response(JSON.stringify(found), { status: 200, headers: { "content-type": "application/json" } });
 }
 
-function handleGetValue(res, key) {
-  const store = Kv.openDefault();
-  if (!store.exists(key)) {
-    res.status(404);
-    res.end();
-    return
-  }
-  let found = store.getJson(key);
-  res.status(200);
-  res.set({
-    "content-type": "application/json"
-  });
-  res.send(JSON.stringify(found));
-}
+function handleSetValue(key, requestBody) {
+    let payload = JSON.parse(decoder.decode(requestBody));
 
-function handleSetValue(res, key, requestBody) {
-  let payload = JSON.parse(decoder.decode(requestBody));
+    if (!payload || !payload.firstName || !payload.lastName) {
+        return new Response("Invalid payload received.\nExpecting {\"firstName\": \"some\", \"lastName\": \"some\"}", { status: 400 });
+    }
+    const store = Kv.openDefault();
+    store.setJson(key, payload);
 
-  if (!payload || !payload.firstName || !payload.lastName) {
-    res.status(400);
-    res.send("Invalid payload received.\nExpecting {\"firstName\": \"some\", \"lastName\": \"some\"}");
-    return;
-  }
-  const store = Kv.openDefault();
-  store.setJson(key, payload);
-  res.status(200);
-  res.end();
+    return new Response(null, { status: 200 });
 }

@@ -1,28 +1,30 @@
-import { Router, Variables, Postgres } from "@fermyon/spin-sdk";
+// https://itty.dev/itty-router/routers/autorouter
+import { AutoRouter } from 'itty-router';
+import { Variables, Postgres } from "@fermyon/spin-sdk";
 import { v4 as uuidv4 } from 'uuid';
 import { validate as uuidValidate } from 'uuid';
+
+
 const decoder = new TextDecoder();
-const router = Router();
+let router = AutoRouter();
 
-router.post("/products", async (_, req, res, extras) => createProduct(await req.arrayBuffer(), extras[0], res));
-router.get("/products", (_, _req, res, extras) => readAllProducts(extras[0], res));
-router.get("/products/:id", ({ params }, _req, res, extras) => readProductById(params.id, extras[0], res));
-router.put("/products/:id", async ({ params }, req, res, extras) => updateProductById(params.id, await req.arrayBuffer(), extras[0], res));
-router.delete("/products/:id", ({ params }, _req, res, extras) => deleteProductById(params.id, extras[0], res));
-router.all("*", (_, _req, res) => notFound("Endpoint not found", res));
+// Route ordering matters, the first route that matches will be used
+// Any route that does not return will be treated as a middleware
+// Any unmatched route will return a 404
+router
+    .post("/products", async (request, { connectionString }) => createProduct(await request.arrayBuffer(), connectionString))
+    .get("/products", async (_, { connectionString }) => readAllProducts(connectionString))
+    .get("/products/:id", async ({ params, connectionString }) => readProductById(params.id, connectionString))
+    .put("/products/:id", async (request, { params, connectionString }) => updateProductById(params.id, await request.arrayBuffer(), connectionString))
+    .delete("/products/:id", async ({ params, connectionString }) => deleteProductById(params.id, connectionString));
 
-export async function handler(req, res) {
-  const connectionString = Variables.get("pg_connection_string");
-  if (!connectionString) {
-    res.status(500);
-    res.set(DEFAULT_HEADERS);
-    res.send(JSON.stringify({
-      message: "Connection String not specified"
-    }));
-    return;
-  }
-  await router.handleRequest(req, res, connectionString)
-}
+addEventListener('fetch', async (event) => {
+    const connectionString = Variables.get("pg_connection_string");
+    if (!connectionString) {
+        event.respondWith(new Response(JSON.stringify({ message: "Connection String not specified" }), { status: 500, headers: DEFAULT_HEADERS }));
+    }
+    event.respondWith(router.fetch(event.request, { connectionString }));
+});
 
 const SQL_CREATE = "INSERT INTO Products (Id, Name, Price) VALUES ($1, $2, $3)";
 const SQL_READ_ALL = "SELECT Id, Name, Price from Products ORDER BY Name";
@@ -31,120 +33,107 @@ const SQL_UPDATE_BY_ID = "UPDATE Products SET Name = $1, Price = $2 WHERE Id = $
 const SQL_DELETE_BY_ID = "DELETE FROM Products WHERE Id = $1";
 
 const DEFAULT_HEADERS = {
-  "content-type": "application/json"
+    "content-type": "application/json"
 };
 
-function badRequest(message, res) {
-  res.status(400);
-  res.set(DEFAULT_HEADERS);
-  res.send(JSON.stringify({ message }));
+function badRequest(message) {
+    return new Response(JSON.stringify({ message }), { status: 400, headers: DEFAULT_HEADERS });
 }
 
-function notFound(message, res) {
-  res.status(404);
-  res.set(DEFAULT_HEADERS);
-  res.send(JSON.stringify({ message }));
+function notFound(message) {
+    return new Response(JSON.stringify({ message }), { status: 404, headers: DEFAULT_HEADERS });
 }
 
-function readAllProducts(connectionString, res) {
-  const connection = Postgres.open(connectionString);
-  let result = connection.query(SQL_READ_ALL, []);
-  let items = result.rows.map(row => {
-    return {
-      id: row["id"],
-      name: row["name"],
-      price: +row["price"]
+function readAllProducts(connectionString) {
+    const connection = Postgres.open(connectionString);
+    let result = connection.query(SQL_READ_ALL, []);
+    let items = result.rows.map(row => {
+        return {
+            id: row["id"],
+            name: row["name"],
+            price: +row["price"]
+        };
+    });
+
+    return new Response(JSON.stringify(items), { status: 200, headers: DEFAULT_HEADERS });
+}
+
+function readProductById(id, connectionString) {
+    if (!uuidValidate(id)) {
+        return badRequest("Invalid identifier received via URL");
+    }
+    let connection = Postgres.open(connectionString);
+    let result = connection.query(SQL_READ_BY_ID, [id]);
+    if (result.rows.length == 0) {
+        return notFound("Product not found");
+    }
+    let found = {
+        id: result.rows[0]["id"],
+        name: result.rows[0]["name"],
+        price: +result.rows[0]["price"]
     };
-  });
-  res.status(200);
-  res.set(DEFAULT_HEADERS);
-  res.send(JSON.stringify(items));
+
+    return new Response(JSON.stringify(found), { status: 200, headers: DEFAULT_HEADERS });
 }
 
-function readProductById(id, connectionString, res) {
-  if (!uuidValidate(id)) {
-    return badRequest("Invalid identifier received via URL", res);
-  }
-  let connection = Postgres.open(connectionString);
-  let result = connection.query(SQL_READ_BY_ID, [id]);
-  if (result.rows.length == 0) {
-    return notFound("Product not found");
-  }
-  let found = {
-    id: result.rows[0]["id"],
-    name: result.rows[0]["name"],
-    price: +result.rows[0]["price"]
-  };
-  res.status(200);
-  res.set(DEFAULT_HEADERS);
-  res.send(JSON.stringify(found));
+function createProduct(requestBody, connectionString) {
+    let payload = JSON.parse(decoder.decode(requestBody));
+    if (!payload || !payload.name || typeof payload.price != "number") {
+        return badRequest("Invalid payload received. Expecting {\"name\":\"some name\", \"price\": 9.99}");
+    }
+
+    const newProduct = {
+        id: uuidv4(),
+        name: payload.name,
+        price: payload.price
+    };
+
+    const connection = Postgres.open(connectionString);
+    connection.execute(SQL_CREATE, [newProduct.id, newProduct.name, newProduct.price]);
+
+    let customHeaders = {
+        "Location": `/products/${newProduct.id}`
+    };
+    Object.assign(customHeaders, DEFAULT_HEADERS);
+
+    return new Response(JSON.stringify(newProduct), { status: 201, headers: customHeaders });
 }
 
-function createProduct(requestBody, connectionString, res) {
-  let payload = JSON.parse(decoder.decode(requestBody));
-  if (!payload || !payload.name || typeof payload.price != "number") {
-    return badRequest("Invalid payload received. Expecting {\"name\":\"some name\", \"price\": 9.99}", res);
-  }
+function updateProductById(id, requestBody, connectionString) {
+    if (!uuidValidate(id)) {
+        return badRequest("Invalid identifier received via URL");
+    }
+    let payload = JSON.parse(decoder.decode(requestBody));
+    if (!payload || !payload.name || typeof payload.price != "number") {
+        return badRequest("Invalid payload received. Expecting {\"name\":\"some name\", \"price\": 9.99}");
+    }
 
-  const newProduct = {
-    id: uuidv4(),
-    name: payload.name,
-    price: payload.price
-  };
+    const product = {
+        id: id,
+        name: payload.name,
+        price: payload.price
+    };
+    const connection = Postgres.open(connectionString);
+    const updatedRows = connection.execute(SQL_UPDATE_BY_ID, [product.name, product.price, product.id]);
+    if (updatedRows == 0) {
+        return notFound("Product not found");
+    }
+    let customHeaders = {
+        "Location": `/items/${id}`
+    }
+    Object.assign(customHeaders, DEFAULT_HEADERS);
 
-  const connection = Postgres.open(connectionString);
-  connection.execute(SQL_CREATE, [newProduct.id, newProduct.name, newProduct.price]);
-
-  let customHeaders = {
-    "Location": `/products/${newProduct.id}`
-  };
-  Object.assign(customHeaders, DEFAULT_HEADERS);
-
-  res.status(201);
-  res.set(customHeaders);
-  res.send(JSON.stringify(newProduct));
+    return new Response(JSON.stringify(product), { status: 200, headers: customHeaders });
 }
 
-function updateProductById(id, requestBody, connectionString, res) {
-  if (!uuidValidate(id)) {
-    return badRequest("Invalid identifier received via URL", res);
-  }
-  let payload = JSON.parse(decoder.decode(requestBody));
-  if (!payload || !payload.name || typeof payload.price != "number") {
-    return badRequest("Invalid payload received. Expecting {\"name\":\"some name\", \"price\": 9.99}", res);
-  }
-
-  const product = {
-    id: id,
-    name: payload.name,
-    price: payload.price
-  };
-  const connection = Postgres.open(connectionString);
-  const updatedRows = connection.execute(SQL_UPDATE_BY_ID, [product.name, product.price, product.id]);
-  if (updatedRows == 0) {
-    return notFound("Product not found", res);
-  }
-  let customHeaders = {
-    "Location": `/items/${id}`
-  }
-  Object.assign(customHeaders, DEFAULT_HEADERS);
-
-  res.status(200);
-  res.set(customHeaders);
-  res.send(JSON.stringify(product));
+function deleteProductById(id, connectionString) {
+    if (!uuidValidate(id)) {
+        return badRequest("Invalid identifier received via URL");
+    }
+    const connection = Postgres.open(connectionString);
+    const deletedRows = connection.execute(SQL_DELETE_BY_ID, [id]);
+    if (deletedRows == 0) {
+        return notFound("Product not found");
+    }
+    return new Response(null, { status: 204 });
 }
-
-function deleteProductById(id, connectionString, res) {
-  if (!uuidValidate(id)) {
-    return badRequest("Invalid identifier received via URL", res);
-  }
-  const connection = Postgres.open(connectionString);
-  const deletedRows = connection.execute(SQL_DELETE_BY_ID, [id]);
-  if (deletedRows == 0) {
-    return notFound("Product not found", res);
-  }
-  res.status(204);
-  res.set(DEFAULT_HEADERS);
-  res.end();
-}
-

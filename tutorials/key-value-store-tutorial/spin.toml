@@ -11,11 +11,10 @@ route = "/..."
 component = "hello-key-value-store"
 
 [component.hello-key-value-store]
-source = "target/hello-key-value-store.wasm"
+source = "dist/hello-key-value-store.wasm"
 exclude_files = ["**/node_modules"]
 key_value_stores = ["default"]
-allowed_outbound_hosts = []
 
 [component.hello-key-value-store.build]
-command = "npm run build"
-watch = ["src/**/*.ts", "package.json"]
+command = ["npm install", "npm run build"]
+watch = ["src/**/*.ts"]
