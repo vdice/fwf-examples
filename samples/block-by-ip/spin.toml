@@ -8,13 +8,13 @@ version = "0.1.0"
 
 [[trigger.http]]
 route = "/..."
-component = "block-ip-old"
+component = "block-ip"
 
-[component.block-ip-old]
-source = "dist/block-ip-old.wasm"
+[component.block-ip]
+source = "dist/block-ip.wasm"
 exclude_files = ["**/node_modules"]
 key_value_stores = ["default"]
 
-[component.block-ip-old.build]
+[component.block-ip.build]
 command = ["npm install", "npm run build"]
 watch = ["src/**/*.js"]
