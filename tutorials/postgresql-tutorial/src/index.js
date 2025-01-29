@@ -14,9 +14,9 @@ let router = AutoRouter();
 router
     .post("/products", async (request, { connectionString }) => createProduct(await request.arrayBuffer(), connectionString))
     .get("/products", async (_, { connectionString }) => readAllProducts(connectionString))
-    .get("/products/:id", async ({ params, connectionString }) => readProductById(params.id, connectionString))
-    .put("/products/:id", async (request, { params, connectionString }) => updateProductById(params.id, await request.arrayBuffer(), connectionString))
-    .delete("/products/:id", async ({ params, connectionString }) => deleteProductById(params.id, connectionString));
+    .get("/products/:id", async ({ params }, { connectionString }) => readProductById(params.id, connectionString))
+    .put("/products/:id", async (request, { connectionString }) => updateProductById(request.params.id, await request.arrayBuffer(), connectionString))
+    .delete("/products/:id", async ({ params }, { connectionString }) => deleteProductById(params.id, connectionString));
 
 addEventListener('fetch', async (event) => {
     const connectionString = Variables.get("pg_connection_string");
