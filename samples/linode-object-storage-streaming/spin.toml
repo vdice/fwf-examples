@@ -1,0 +1,32 @@
+spin_manifest_version = 2
+
+[application]
+name = "linode-object-storage-streaming"
+version = "0.1.0"
+
+[variables]
+access_key_id = { required = true }
+secret_access_key = { required = true }
+region = { default = "nl-ams-1" }
+endpoint = { default = "https://nl-ams-1.linodeobjects.com" }
+
+[[trigger.http]]
+route = "/..."
+component = "linode-object-storage-streaming"
+
+[component.linode-object-storage-streaming]
+source = "dist/linode-object-storage-streaming.wasm"
+exclude_files = ["**/node_modules"]
+allowed_outbound_hosts = [
+	"https://spin-s3-streaming-test.nl-ams-1.linodeobjects.com",
+	"https://raw.githubusercontent.com",
+]
+[component.linode-object-storage-streaming.build]
+command = "npm install && npm run build"
+watch = ["src/**/*.ts", "package.json"]
+
+[component.linode-object-storage-streaming.variables]
+access_key_id = "{{ access_key_id }}"
+secret_access_key = "{{ secret_access_key }}"
+region = "{{ region }}"
+endpoint = "{{ endpoint }}"
