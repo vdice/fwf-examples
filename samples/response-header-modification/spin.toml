@@ -1,7 +1,7 @@
 spin_manifest_version = 2
 
 [application]
-authors = ["Thorsten Hans <thorsten.hans@fermyon.com>"]
+authors = ["karthik2804 <karthik.ganeshram@fermyon.com>"]
 description = ""
 name = "response-header-modification"
 version = "0.1.0"
@@ -22,5 +22,5 @@ allowed_outbound_hosts = ["https://swapi.dev/"]
 origin = "{{ origin }}"
 
 [component.response-header-modification.build]
-command = "npm install && npm run build"
-watch = ["src/**/*.js", "package.json"]
+command = ["npm install", "npm run build"]
+watch = ["src/**/*.js"]

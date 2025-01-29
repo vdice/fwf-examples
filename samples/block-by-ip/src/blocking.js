@@ -1,21 +1,21 @@
 import { Kv } from "@fermyon/spin-sdk";
 import { getClientAddressFromRequest, cleanupIpAddress } from "./helpers";
 
-const blockByIp = (_metadata, request, res) => {
+const blockByIp = (request) => {
   const clientAddress = getClientAddressFromRequest(request);
 
   if (!clientAddress) {
-    res.status(401);
-    res.send("Could not determine client ip address. Request will be blocked");
-    return;
+    return new Response("Could not determine client ip address. Request will be blocked", {
+      status: 401
+    });
   }
   const blocklist = loadBlocklist();
   const ip = cleanupIpAddress(clientAddress);
 
   if (blocklist.indexOf(ip) > -1) {
-    res.status(401);
-    res.send("Sorry, your IP is blocked");
-    return;
+    return new Response("Sorry, your IP is blocked", {
+      status: 401
+    });
   }
 }
 
