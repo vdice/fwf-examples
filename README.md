@@ -15,3 +15,4 @@
 - [Traffic Filtering: Block By user country](./samples/block-by-country/)
 - [Response Header Modification](./samples/response-header-modification/)
 - [Promo Code Validation](./samples/validate-promo-codes/)
+- [Early Hints Rust](./samples/early-hints-rst) 
