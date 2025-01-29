@@ -15,6 +15,7 @@ source = "dist/block-by-country.wasm"
 exclude_files = ["**/node_modules"]
 key_value_stores = ["default"]
 allowed_outbound_hosts = ["http://ip-api.com"]
+
 [component.block-by-country.build]
 command = ["npm install", "npm run build"]
 watch = ["src/**/*.js"]
