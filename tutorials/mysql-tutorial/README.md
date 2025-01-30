@@ -1,6 +1,6 @@
-# Tutorial: Querying PostgreSQL
+# Tutorial: Querying relational Databases
 
-This folder contains the sample application written as part of the _Querying PostgreSQL_ tutorial.
+This folder contains the sample application written as part of the _Querying MySQL_ tutorial.
 
 ## SQL Scripts
 
@@ -32,9 +32,10 @@ WHERE NOT EXISTS (SELECT Id FROM Products WHERE Id = '6f062dc2-bbf2-4c6c-8169-35
 
 ## Building the Spin Application
 
-Once you've cloned the repository, move into the tutorial folder ([./tutorials/postgresql-tutorial](/tutorials/postgresql-tutorial)) and run `spin build`:
+Once you've cloned the repository, move into the tutorial folder ([./tutorials/mysql-tutorial](/tutorials/mysql-tutorial)) and run `spin build`:
 
 ```console
-cd tutorials/postgresql-tutorial
+cd tutorials/mysql-tutorial
 spin build
 ```
+
