@@ -91,7 +91,7 @@ function createProduct(requestBody: ArrayBuffer, connectionString: string) {
 }
 
 function readAllProducts(connectionString: string) {
-  // open PostgreSQL connection
+  // open MySQL connection
   const connection = Mysql.open(connectionString);
 
   // load all products from the database 
