@@ -3,7 +3,8 @@
 ## Tutorials
 
 - [Using the Key Value Store](./tutorials/key-value-store-tutorial/)
-- [Querying relational Databases](./tutorials/postgresql-tutorial/)
+- [Querying PostgreSQL](./tutorials/postgresql-tutorial/)
+- [Querying MySQL](./tutorials/mysql-tutorial/)
 
 ## Examples
 

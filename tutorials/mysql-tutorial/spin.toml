@@ -1,0 +1,30 @@
+spin_manifest_version = 2
+
+[application]
+authors = ["Thorsten Hans <thorsten.hans@fermyon.com>"]
+description = ""
+name = "linode-mysql"
+version = "0.1.0"
+
+[variables]
+mysql_host = { required = true }
+mysql_user = { required = true }
+mysql_password = { required = true, secret = true }
+mysql_port = { required = true }
+mysql_database = { required = true }
+
+[[trigger.http]]
+route = "/..."
+component = "linode-mysql"
+
+[component.linode-mysql]
+source = "dist/linode-mysql.wasm"
+exclude_files = ["**/node_modules"]
+allowed_outbound_hosts = ["mysql://{{ mysql_host }}:{{ mysql_port }}"]
+
+[component.linode-mysql.variables]
+mysql_connection_string = "mysql://{{ mysql_user}}:{{ mysql_password }}@{{ mysql_host }}:{{ mysql_port }}/{{ mysql_database }}"
+
+[component.linode-mysql.build]
+command = ["npm install", "npm run build"]
+watch = ["src/**/*.ts"]
