@@ -1,4 +1,4 @@
-# AI Sentiment Analysis
+# Sentiment Analysis
 
 This repository contains an API that performs sentiment analysis and a simple UI to interact with it.
 
@@ -6,13 +6,11 @@ Please check the repo's [README](../README.md#prerequisites) for prerequisites f
 
 ## Build and Running 
 
-Install dependencies, build, and run your application. To avoid configuring secrets for the [KV explorer](https://developer.fermyon.com/hub/preview/template_kv_explorer), set an environment variable to skip auth.
 ```bash
-$ npm install 
-$ spin build --up --env SPIN_APP_KV_SKIP_AUTH=1
+$ spin build --up
 ```
 
-> Note: If you are using the Cloud GPU component, remember to reference the `runtime-config.toml` file, e.g.: `spin build --up --env SPIN_APP_KV_SKIP_AUTH=1 --runtime-config-file ./runtime-config.toml`.
+> Note: If you are using the Cloud GPU component, remember to reference the `runtime-config.toml` file, e.g.: `spin build --up --runtime-config-file ./runtime-config.toml`.
 
 ## Test the Application
 
@@ -28,3 +26,5 @@ You can access the UI at http://localhost:3000. The KV-Explorer can be found at 
 $ cd api
 $ spin deploy
 ```
+
+Make sure to change the url-reference in the `./client/src/main.rs`` file
