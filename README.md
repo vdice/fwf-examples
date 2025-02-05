@@ -13,6 +13,7 @@
 - [A/B Testing using Cookies](./samples/ab-testing-cookie/)
 - [A/B Testing using Key-Value Store](./samples/ab-testing-kv/)
 - [A/B Testing using HTTP Headers (e.g User Agent)](./samples/ab-testing-user-agent/)
+- [AI Sentiment Analysis](./samples/ai-sentiment-analysis/) 
 - [Alter Response Headers](./samples/alter-headers/)
 - [Auto-Complete API](./samples/auto-complete/)
 - [Cookie Parsing](./samples/parse-cookie/)
