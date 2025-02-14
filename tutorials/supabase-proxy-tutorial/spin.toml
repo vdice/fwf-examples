@@ -1,0 +1,33 @@
+spin_manifest_version = 2
+
+[application]
+authors = ["Thorsten Hans <thorsten.hans@fermyon.com>"]
+description = ""
+name = "supabase-proxy"
+version = "0.1.0"
+
+[variables]
+supabase_url = { required = true }
+supabase_key = { required = true, secret = true }
+supabase_webhook_token = { required = true, secret = true }
+cache_ttl = { default = "5" }
+
+[[trigger.http]]
+route = "/..."
+component = "supabase-proxy"
+
+[component.supabase-proxy]
+source = "dist/supabase-proxy.wasm"
+exclude_files = ["**/node_modules"]
+allowed_outbound_hosts = ["{{ supabase_url }}"]
+key_value_stores = ["default"]
+
+[component.supabase-proxy.variables]
+supabase_url = "{{ supabase_url }}"
+supabase_key = "{{ supabase_key }}"
+supabase_webhook_token = "{{ supabase_webhook_token }}"
+cache_ttl = "{{ cache_ttl }}"
+
+[component.supabase-proxy.build]
+command = ["npm install", "npm run build"]
+watch = ["src/**/*.ts"]

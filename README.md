@@ -5,6 +5,7 @@
 - [Using the Key Value Store](./tutorials/key-value-store-tutorial/)
 - [Querying PostgreSQL](./tutorials/postgresql-tutorial/)
 - [Querying MySQL](./tutorials/mysql-tutorial/)
+- [Building a Supabase Cache Proxy](./tutorials/supabase-proxy-tutorial/)
 
 ## Examples
 
