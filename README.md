@@ -6,6 +6,7 @@
 - [Querying PostgreSQL](./tutorials/postgresql-tutorial/)
 - [Querying MySQL](./tutorials/mysql-tutorial/)
 - [Building a Supabase Cache Proxy](./tutorials/supabase-proxy-tutorial/)
+- [Stream Data from Linode Object Store](./tutorials/stream-data-from-linode-object-store-tutorial/)
 
 ## Examples
 
