@@ -1,3 +1,8 @@
+// This example was adapted from Cloudflare Workers as a familiar starting point for
+// demonstrating how you can migrate your workload to a Spin app on Fermyon Wasm Functions.
+// Source: https://developers.cloudflare.com/workers/examples/bulk-redirects/
+// The original example is provided by Cloudflare under the MIT License.
+
 import { AutoRouter } from 'itty-router';
 
 const router = AutoRouter();
