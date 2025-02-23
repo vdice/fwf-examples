@@ -21,8 +21,6 @@ async function aggregateJson(): Promise<Response> {
 }
 
 //@ts-ignore
-addEventListener('fetch', async (event: FetchEvent) => {
+addEventListener('fetch', (event: FetchEvent) => {
     event.respondWith(aggregateJson());
 });
-
-export {}
