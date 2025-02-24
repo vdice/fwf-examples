@@ -1,0 +1,33 @@
+spin_manifest_version = 2
+
+[application]
+authors = ["Thorsten Hans <thorsten.hans@fermyon.com>"]
+description = ""
+name = "limit-access"
+version = "0.1.0"
+
+[variables]
+origin = { required = true }
+block_until = { required = true }
+block_status_code = { default = "404" }
+track_blocked_requests = { default = "true" }
+
+[[trigger.http]]
+route = "/..."
+component = "limit-access"
+
+[component.limit-access]
+source = "dist/limit-access.wasm"
+exclude_files = ["**/node_modules"]
+allowed_outbound_hosts = ["{{ origin }}"]
+key_value_stores = ["default"]
+
+[component.limit-access.variables]
+origin = "{{ origin }}"
+block_until = "{{ block_until }}"
+block_status_code = "{{ block_status_code }}"
+track_blocked_requests = "{{ track_blocked_requests }}"
+
+[component.limit-access.build]
+command = ["npm install", "npm run build"]
+watch = ["src/**/*.ts"]
