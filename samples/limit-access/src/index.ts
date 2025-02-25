@@ -27,7 +27,9 @@ addEventListener('fetch', async (event: FetchEvent) => {
     config: {
       origin,
       blockUntil,
+      // variables are read as strings, convert status to number
       blockStatusCode: +blockStatusCode,
+      // variables are read as string check if tracking of blocked requests is set to true
       trackBlockedRequests: trackBlockedRequests === "true"
     } as Config
   }));
@@ -37,24 +39,6 @@ const isValidDate = (value: string): boolean => {
   const date = new Date(value);
   return !isNaN(date.getTime());
 }
-
-const couldHavePayload = (method: string): boolean => {
-  switch (method.toLowerCase()) {
-    case 'get':
-      return false;
-    case 'head':
-      return false;
-    case 'delete':
-      return false;
-    case 'trace':
-      return false;
-    case 'connect':
-      return false;
-    default:
-      return true;
-  }
-}
-
 
 const buildTargetUrl = (req: Request, config: Config): string => {
   const incomingUrl = new URL(req.url);
@@ -94,15 +78,11 @@ const guard = async function(req: Request, config: Config): Promise<Response> {
     return new Response(null, { status: 500 });
   }
 
-  let body = undefined;
-  if (couldHavePayload(req.method)) {
-    body = await req.arrayBuffer();
-  }
   const url = buildTargetUrl(req, config);
   const response = await fetch(url, {
     method: req.method,
     headers: req.headers,
-    body: body
+    body: req.body as ReadableStream
   })
 
   return new Response(response.body, {
