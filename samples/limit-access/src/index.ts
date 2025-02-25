@@ -1,11 +1,38 @@
-// For AutoRouter documentation refer to https://itty.dev/itty-router/routers/autorouter
 import { Kv, Variables } from '@fermyon/spin-sdk';
 import { AutoRouter } from 'itty-router';
 import { Config, RequestTacking } from './models';
+
 let router = AutoRouter();
 
-router
-  .all("*", async (req, { config }) => await guard(req, config));
+router.all("*", async (req, { event, config }) => await guard(req, event, config));
+
+const guard = async function (req: Request, event: FetchEvent, config: Config): Promise<Response> {
+  try {
+    const now = new Date().getTime();
+    const blockUntil = Date.parse(config.blockUntil);
+    if (now < blockUntil) {
+      if (config.trackBlockedRequests) {
+        event.waitUntil(trackBlockedRequest(req));
+      }
+      return new Response(null, { status: config.blockStatusCode });
+    }
+  } catch (err) {
+    console.log(`Error while checking block window: ${err}`);
+    return new Response(null, { status: 500 });
+  }
+
+  const url = buildTargetUrl(req, config);
+  const response = await fetch(url, {
+    method: req.method,
+    headers: req.headers,
+    body: req.body as ReadableStream
+  })
+
+  return new Response(response.body, {
+    status: response.status,
+    headers: response.headers
+  });
+};
 
 //@ts-ignore
 addEventListener('fetch', async (event: FetchEvent) => {
@@ -24,6 +51,7 @@ addEventListener('fetch', async (event: FetchEvent) => {
     blockStatusCode = "404";
   }
   event.respondWith(router.fetch(event.request, {
+    event,
     config: {
       origin,
       blockUntil,
@@ -52,7 +80,10 @@ const buildTargetUrl = (req: Request, config: Config): string => {
   return destinationUrl;
 }
 
-const trackBlockedRequest = (req: Request): void => {
+const trackBlockedRequest = async (req: Request) => {
+  // Force this operation to be async
+  // This allows to background tracking the request in KV, without adding latency to the user response
+  await new Promise(resolve => setTimeout(resolve));
   const key = `${req.method.toLowerCase()}_${req.url}`;
   const store = Kv.openDefault();
   let value = { count: 1 } as RequestTacking;
@@ -63,30 +94,3 @@ const trackBlockedRequest = (req: Request): void => {
   store.setJson(key, value)
 }
 
-const guard = async function(req: Request, config: Config): Promise<Response> {
-  try {
-    const now = new Date().getTime();
-    const blockUntil = Date.parse(config.blockUntil);
-    if (now < blockUntil) {
-      if (config.trackBlockedRequests) {
-        trackBlockedRequest(req);
-      }
-      return new Response(null, { status: config.blockStatusCode });
-    }
-  } catch (err) {
-    console.log(`Error while checking block window: ${err}`);
-    return new Response(null, { status: 500 });
-  }
-
-  const url = buildTargetUrl(req, config);
-  const response = await fetch(url, {
-    method: req.method,
-    headers: req.headers,
-    body: req.body as ReadableStream
-  })
-
-  return new Response(response.body, {
-    status: response.status,
-    headers: response.headers
-  });
-};
