@@ -30,3 +30,4 @@
 - [Limit Access](./samples/limit-access/)
 - [GitHub GraphQL queries](./samples/graphql-stargazer/)
 - [TodoMVC (VueJS + TinyGo + Key-Value Store)](./samples/todo-mvc/)
+- [JWT Validator](./samples/jwt-validator/)
