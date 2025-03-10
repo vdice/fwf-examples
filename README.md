@@ -14,7 +14,7 @@
 - [A/B Testing using Key-Value Store](./samples/ab-testing-kv/)
 - [A/B Testing using HTTP Headers (e.g User Agent)](./samples/ab-testing-user-agent/)
 - [Alter Response Headers](./samples/alter-headers/)
-- [Auto-Complete API](./samples/auto-complete/e/)
+- [Auto-Complete API](./samples/auto-complete/)
 - [Cookie Parsing](./samples/parse-cookie/)
 - [Traffic Filtering: Block By IP address](./samples/block-by-ip/)
 - [Traffic Filtering: Block By user country](./samples/block-by-country/)
