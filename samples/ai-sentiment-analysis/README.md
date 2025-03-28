@@ -1,4 +1,6 @@
-# Sentiment Analysis
+# AI Sentiment Analysis chat 
+
+![screenshot of the simple ui](https://dl3.pushbulletusercontent.com/4AO47NWWbLYnzD2ghuVh382UF4UZ1KSN/ai-conversational-ui.png)
 
 This repository contains an API that performs sentiment analysis and a simple UI to interact with it.
 
