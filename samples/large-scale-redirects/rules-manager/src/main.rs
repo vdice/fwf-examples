@@ -11,9 +11,9 @@
 //!   - we additionally generate optimized data structures for both rule sources and destinations
 //!     and write those to files as well
 
-use std::cell::RefCell;
 use anyhow::{Context, Result, anyhow};
 use clap::{Parser, ValueEnum, arg};
+use std::cell::RefCell;
 use std::fmt::{Display, Formatter};
 use std::fs::{File, read_to_string};
 use std::io::{BufWriter, Write};
@@ -302,23 +302,24 @@ impl<'a> RedirectsMap<'a> {
             2 => {
                 if parts[0] == parts[1] {
                     ParseResult::Err(
-                        format!("Source and target cannot be the same"),
+                        "Source and target cannot be the same".to_string(),
                         checks.self_loops,
                     )
                 } else if !is_valid_redirect_source(parts[0]) && !is_valid_redirect_target(parts[1])
                 {
                     ParseResult::Err(
-                        format!("Invalid format for source and target: '{}' -> '{}'", parts[0], parts[1]),
+                        format!(
+                            "Invalid format for source and target: '{}' -> '{}'",
+                            parts[0], parts[1]
+                        ),
                         checks.invalid_lines,
                     )
-                } else if !is_valid_redirect_source(parts[0])
-                {
+                } else if !is_valid_redirect_source(parts[0]) {
                     ParseResult::Err(
                         format!("Invalid format for source: '{}'", parts[0]),
                         checks.invalid_lines,
                     )
-                } else if !is_valid_redirect_target(parts[1])
-                {
+                } else if !is_valid_redirect_target(parts[1]) {
                     ParseResult::Err(
                         format!("Invalid format for target: '{}'", parts[1]),
                         checks.invalid_lines,
@@ -551,13 +552,16 @@ fn is_valid_redirect_source(input: &str) -> bool {
 }
 
 fn is_valid_redirect_target(input: &str) -> bool {
-    assert!(!input.contains(|c: char| c.is_whitespace()), "Input should not contain newlines");
+    assert!(
+        !input.contains(|c: char| c.is_whitespace()),
+        "Input should not contain newlines"
+    );
     let violations = RefCell::new(Vec::new());
     let cb = |v| violations.borrow_mut().push(v);
-    let parser = Url::options()
-        .syntax_violation_callback(Some(&cb));
+    let parser = Url::options().syntax_violation_callback(Some(&cb));
     if input.starts_with("/") {
-        return parser.base_url(Some(&BASE)).parse(input).is_ok() && violations.borrow_mut().is_empty();
+        return parser.base_url(Some(&BASE)).parse(input).is_ok()
+            && violations.borrow_mut().is_empty();
     }
 
     if !input.starts_with("http") {
@@ -825,10 +829,12 @@ mod tests {
             redirects.parse_errors[0].reason.severity,
             ValidationBehavior::Error
         );
-        assert!(redirects.parse_errors[0]
-            .reason
-            .message
-            .contains("Invalid format"));
+        assert!(
+            redirects.parse_errors[0]
+                .reason
+                .message
+                .contains("Invalid format")
+        );
     }
 
     #[test]
@@ -864,7 +870,14 @@ mod tests {
         };
         redirects.add_rules(&rules, &behaviors);
         assert_eq!(redirects.map.len(), 2); // Should parse valid lines
-        assert!(redirects.parse_errors.iter().filter(|e| e.reason.severity != ValidationBehavior::Ignore).count() == 0); // Should ignore the error
+        assert_eq!(
+            redirects
+                .parse_errors
+                .iter()
+                .filter(|e| e.reason.severity != ValidationBehavior::Ignore)
+                .count(),
+            0
+        ); // Should ignore the error
     }
 
     #[test]
@@ -901,7 +914,9 @@ mod tests {
     fn test_is_valid_redirect_target() {
         assert!(is_valid_redirect_target("/valid/relative/path"));
         assert!(is_valid_redirect_target("https://absolute.url/path"));
-        assert!(is_valid_redirect_target("http://absolute.url/path?query=1#fragment"));
+        assert!(is_valid_redirect_target(
+            "http://absolute.url/path?query=1#fragment"
+        ));
         assert!(!is_valid_redirect_target("invalid-relative-path")); // Relative must start with /
         assert!(!is_valid_redirect_target("ftp://invalid.scheme")); // Only http/https schemes for absolute URLs
         assert!(!is_valid_redirect_target("/<with>invalid|chars")); // Invalid chars
@@ -1053,7 +1068,10 @@ mod tests {
             contents: "/valid /target # This is a comment\n/another /valid  # Comment with spaces\n# Just a comment line\n/no-comment /here".to_string(),
         };
         redirects.add_rules(&rules, &ValidationBehaviors::default());
-        assert!(redirects.parse_errors.is_empty(), "No errors expected with valid comments");
+        assert!(
+            redirects.parse_errors.is_empty(),
+            "No errors expected with valid comments"
+        );
         assert_eq!(redirects.map.len(), 3, "Should parse 3 valid rules");
         assert!(redirects.map.contains_key("/valid"));
         assert_eq!(redirects.map.get("/valid").unwrap().to, "/target");
@@ -1076,9 +1094,21 @@ mod tests {
         };
         redirects.add_rules(&rules, &behaviors);
         assert!(redirects.map.is_empty(), "Invalid rule should not be added");
-        assert_eq!(redirects.parse_errors.len(), 1, "Should have one parse error");
-        assert_eq!(redirects.parse_errors[0].reason.severity, ValidationBehavior::Warn);
-        assert!(redirects.parse_errors[0].reason.message.contains("Missing target"));
+        assert_eq!(
+            redirects.parse_errors.len(),
+            1,
+            "Should have one parse error"
+        );
+        assert_eq!(
+            redirects.parse_errors[0].reason.severity,
+            ValidationBehavior::Warn
+        );
+        assert!(
+            redirects.parse_errors[0]
+                .reason
+                .message
+                .contains("Missing target")
+        );
         assert_eq!(redirects.parse_errors[0].line, "/invalid # comment");
     }
 
@@ -1091,7 +1121,16 @@ mod tests {
         };
         redirects.add_rules(&rules, &ValidationBehaviors::default());
         assert!(redirects.map.is_empty(), "Invalid rule should not be added");
-        assert_eq!(redirects.parse_errors.len(), 1, "Should have one parse error");
-        assert!(redirects.parse_errors[0].reason.message.contains("Missing target"));
+        assert_eq!(
+            redirects.parse_errors.len(),
+            1,
+            "Should have one parse error"
+        );
+        assert!(
+            redirects.parse_errors[0]
+                .reason
+                .message
+                .contains("Missing target")
+        );
     }
 }
