@@ -273,22 +273,26 @@ impl<'a> RedirectsMap<'a> {
 
     fn add_rules(&mut self, source: &'a RedirectsSource, checks: &ValidationBehaviors) {
         for (line_no, line) in source.contents.lines().enumerate() {
-            if line.trim().is_empty() || line.starts_with('#') {
-                continue; // Skip empty lines and comments
+            // Strip inline comments
+            let rule_part = line.split('#').next().unwrap_or("").trim();
+
+            if rule_part.is_empty() {
+                continue; // Skip empty lines and lines that are only comments
             }
 
-            self.parse_line(line, checks, source, line_no);
+            self.parse_line(rule_part, line, checks, source, line_no);
         }
     }
 
     fn parse_line(
         &mut self,
-        line: &'a str,
+        rule_part: &'a str,
+        original_line: &'a str,
         checks: &ValidationBehaviors,
         source: &'a RedirectsSource,
         line_no: usize,
     ) {
-        let parts: Vec<&str> = line.split_whitespace().collect();
+        let parts: Vec<&str> = rule_part.split_whitespace().collect();
         let parts = match parts.len() {
             0 => ParseResult::Err("Empty line".to_string(), checks.invalid_lines),
             1 => ParseResult::Err(
@@ -345,7 +349,7 @@ impl<'a> RedirectsMap<'a> {
                 let failed = FailedCheck {
                     source,
                     line_no,
-                    line,
+                    line: original_line,
                     reason,
                 };
                 self.parse_errors.push(failed);
@@ -1039,5 +1043,55 @@ mod tests {
         assert!(!output_path.exists() || read_to_string(&output_path)?.is_empty());
 
         Ok(())
+    }
+
+    #[test]
+    fn test_inline_comments() {
+        let mut redirects = RedirectsMap::new();
+        let rules = RedirectsSource {
+            path: Path::new("comments"),
+            contents: "/valid /target # This is a comment\n/another /valid  # Comment with spaces\n# Just a comment line\n/no-comment /here".to_string(),
+        };
+        redirects.add_rules(&rules, &ValidationBehaviors::default());
+        assert!(redirects.parse_errors.is_empty(), "No errors expected with valid comments");
+        assert_eq!(redirects.map.len(), 3, "Should parse 3 valid rules");
+        assert!(redirects.map.contains_key("/valid"));
+        assert_eq!(redirects.map.get("/valid").unwrap().to, "/target");
+        assert!(redirects.map.contains_key("/another"));
+        assert_eq!(redirects.map.get("/another").unwrap().to, "/valid");
+        assert!(redirects.map.contains_key("/no-comment"));
+        assert_eq!(redirects.map.get("/no-comment").unwrap().to, "/here");
+    }
+
+    #[test]
+    fn test_inline_comment_invalid_rule() {
+        let mut redirects = RedirectsMap::new();
+        let rules = RedirectsSource {
+            path: Path::new("invalid_comment"),
+            contents: "/invalid # comment".to_string(),
+        };
+        let behaviors = ValidationBehaviors {
+            invalid_lines: ValidationBehavior::Warn, // Warn to check the error message
+            ..Default::default()
+        };
+        redirects.add_rules(&rules, &behaviors);
+        assert!(redirects.map.is_empty(), "Invalid rule should not be added");
+        assert_eq!(redirects.parse_errors.len(), 1, "Should have one parse error");
+        assert_eq!(redirects.parse_errors[0].reason.severity, ValidationBehavior::Warn);
+        assert!(redirects.parse_errors[0].reason.message.contains("Missing target"));
+        assert_eq!(redirects.parse_errors[0].line, "/invalid # comment");
+    }
+
+    #[test]
+    fn test_hash_in_path_not_a_comment() {
+        let mut redirects = RedirectsMap::new();
+        let rules = RedirectsSource {
+            path: Path::new("hash_path"),
+            contents: "/path#frag /target".to_string(),
+        };
+        redirects.add_rules(&rules, &ValidationBehaviors::default());
+        assert!(redirects.map.is_empty(), "Invalid rule should not be added");
+        assert_eq!(redirects.parse_errors.len(), 1, "Should have one parse error");
+        assert!(redirects.parse_errors[0].reason.message.contains("Missing target"));
     }
 }
