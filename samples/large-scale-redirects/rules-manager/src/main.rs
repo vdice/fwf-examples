@@ -11,11 +11,11 @@
 //!   - we additionally generate optimized data structures for both rule sources and destinations
 //!     and write those to files as well
 
-use anyhow::{Context, Result, anyhow};
-use clap::{Parser, ValueEnum, arg};
+use anyhow::{anyhow, Context, Result};
+use clap::{arg, Parser, ValueEnum};
 use std::cell::RefCell;
 use std::fmt::{Display, Formatter};
-use std::fs::{File, read_to_string};
+use std::fs::{read_to_string, File};
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
@@ -94,6 +94,10 @@ struct Args {
     #[command(flatten)]
     rule_files: RuleFiles,
 
+    /// Default status code for redirects
+    #[arg(value_parser = clap::value_parser!(u16).range(301..400), default_value = "302")]
+    default_status_code: u16,
+
     #[command(flatten)]
     output: Output,
 
@@ -151,8 +155,13 @@ fn run(args: &Args) -> Result<()> {
         })
         .collect::<Result<Vec<_>>>()?;
 
-    let redirects = RedirectsMap::build(&existing_redirects, &new_redirects, &args.behaviors)
-        .with_context(|| "Failed to update redirects".to_string())?;
+    let redirects = RedirectsMap::build(
+        &existing_redirects,
+        &new_redirects,
+        args.default_status_code,
+        &args.behaviors,
+    )
+    .with_context(|| "Failed to update redirects".to_string())?;
 
     // Write the resulting list to a file
     let excluded_rules: Option<Vec<&RedirectsSource>> = if args.include_existing {
@@ -175,11 +184,17 @@ fn run(args: &Args) -> Result<()> {
     let mut entries = redirects
         .map
         .iter()
-        .map(|(key, val)| (*key, val.to))
+        .map(|(key, val)| {
+            if val.status_code == args.default_status_code {
+                (*key, val.to.to_string())
+            } else {
+                (*key, format!("{} {}", val.to, val.status_code))
+            }
+        })
         .collect::<Vec<_>>();
     entries.sort_by_key(|entry| entry.0);
 
-    let mut targets = entries.iter().map(|(_, to)| *to).collect::<Vec<_>>();
+    let mut targets = entries.iter().map(|(_, to)| to).collect::<Vec<_>>();
     targets.sort();
     targets.dedup();
 
@@ -190,7 +205,7 @@ fn run(args: &Args) -> Result<()> {
     let mut build = fst::MapBuilder::new(wtr)?;
     for (from, to) in entries.iter() {
         // Find the index of the target in the sorted list and store it as the value
-        let index = targets.binary_search(to).unwrap();
+        let index = targets.binary_search(&to).unwrap();
         build.insert(from, index as u64)?;
     }
     build.finish()?;
@@ -228,6 +243,7 @@ fn ensure_dir(dir: &&Path) -> Result<()> {
 struct MapEntry<'a> {
     to: &'a str,
     source: &'a RedirectsSource<'a>,
+    status_code: u16,
     line_no: usize,
 }
 
@@ -240,6 +256,7 @@ impl<'a> PartialEq for MapEntry<'a> {
 #[derive(Debug)]
 struct RedirectsMap<'a> {
     map: std::collections::HashMap<&'a str, MapEntry<'a>>,
+    default_status_code: u16,
     parse_errors: Vec<FailedCheck<'a>>,
 }
 
@@ -259,14 +276,15 @@ struct FailedCheckReason {
 
 #[derive(Debug)]
 enum ParseResult<'a> {
-    Ok((&'a str, &'a str)),
+    Ok((&'a str, &'a str, u16)),
     Err(String, ValidationBehavior),
 }
 
 impl<'a> RedirectsMap<'a> {
-    fn new() -> RedirectsMap<'a> {
+    fn new(default_status_code: u16) -> RedirectsMap<'a> {
         Self {
             map: std::collections::HashMap::new(),
+            default_status_code,
             parse_errors: Vec::new(),
         }
     }
@@ -299,47 +317,60 @@ impl<'a> RedirectsMap<'a> {
                 "Missing target for redirect".to_string(),
                 checks.invalid_lines,
             ),
-            2 => {
-                if parts[0] == parts[1] {
+            2 | 3 => {
+                let from = parts[0];
+                let to = parts[1];
+                let status_code = if parts.len() == 3 {
+                    parts[2]
+                        .parse::<u16>()
+                        .ok()
+                        .filter(|&code| (301..=399).contains(&code))
+                } else {
+                    Some(self.default_status_code)
+                };
+
+                if from == to {
                     ParseResult::Err(
                         "Source and target cannot be the same".to_string(),
                         checks.self_loops,
                     )
-                } else if !is_valid_redirect_source(parts[0]) && !is_valid_redirect_target(parts[1])
-                {
+                } else if !is_valid_redirect_source(from) && !is_valid_redirect_target(to) {
                     ParseResult::Err(
-                        format!(
-                            "Invalid format for source and target: '{}' -> '{}'",
-                            parts[0], parts[1]
-                        ),
+                        format!("Invalid format for source and target: '{from}' -> '{to}'"),
                         checks.invalid_lines,
                     )
-                } else if !is_valid_redirect_source(parts[0]) {
+                } else if !is_valid_redirect_source(from) {
                     ParseResult::Err(
-                        format!("Invalid format for source: '{}'", parts[0]),
+                        format!("Invalid format for source: '{from}'"),
                         checks.invalid_lines,
                     )
-                } else if !is_valid_redirect_target(parts[1]) {
+                } else if !is_valid_redirect_target(to) {
                     ParseResult::Err(
-                        format!("Invalid format for target: '{}'", parts[1]),
+                        format!("Invalid format for target: '{to}'"),
+                        checks.invalid_lines,
+                    )
+                } else if status_code.is_none() {
+                    ParseResult::Err(
+                        format!("Invalid status code: '{}'", parts[2]),
                         checks.invalid_lines,
                     )
                 } else {
-                    ParseResult::Ok((parts[0], parts[1]))
+                    ParseResult::Ok((from, to, status_code.unwrap()))
                 }
             }
             n => ParseResult::Err(
-                format!("Line must contain exactly two whitespace-separated parts, but found {n}"),
+                format!("Line must contain 2 or 3 whitespace-separated parts, but found {n}"),
                 checks.invalid_lines,
             ),
         };
 
         match parts {
-            ParseResult::Ok((from, to)) => {
+            ParseResult::Ok((from, to, status_code)) => {
                 self.map.insert(
                     from,
                     MapEntry {
                         to,
+                        status_code,
                         source,
                         line_no,
                     },
@@ -400,14 +431,16 @@ impl<'a> RedirectsMap<'a> {
         let mut chain_depths = vec![];
 
         for start in chain_starts {
-            let mut current = self.map.get(start).unwrap().to;
-
+            let mut current = self.map.get(start).unwrap();
             let mut depth = 1;
 
-            while let Some(target) = self.map.get(current) {
+            while let Some(target) = self.map.get(current.to).map(|e| e.clone()) {
+                if target.status_code != current.status_code {
+                    break;
+                }
                 depth += 1;
-                current = target.to;
-                self.map.insert(start, target.clone());
+                self.map.insert(start, target);
+                current = self.map.get(start).unwrap();
             }
 
             if depth > 1 {
@@ -430,9 +463,10 @@ impl<'a> RedirectsMap<'a> {
     fn build(
         existing_redirects: &'a Vec<RedirectsSource>,
         new_redirects: &'a Vec<RedirectsSource>,
+        default_status_code: u16,
         checks: &ValidationBehaviors,
-    ) -> Result<RedirectsMap<'a>> {
-        let mut redirects: RedirectsMap = RedirectsMap::new();
+    ) -> Result<Self> {
+        let mut redirects = Self::new(default_status_code);
 
         for existing_redirects in existing_redirects {
             let header = existing_redirects.contents.lines().next().unwrap();
@@ -505,7 +539,13 @@ impl<'a> RedirectsMap<'a> {
         let mut sorted_redirects: Vec<_> = self
             .map
             .iter()
-            .map(|(from, to)| format!("{from} {}", to.to))
+            .map(|(from, entry)| {
+                if entry.status_code == self.default_status_code {
+                    format!("{from} {}", entry.to)
+                } else {
+                    format!("{from} {} {}", entry.to, entry.status_code)
+                }
+            })
             .collect();
         sorted_redirects.sort();
 
@@ -610,7 +650,7 @@ mod tests {
     #[test]
     fn test_loop_within_new_rules() {
         // Create a redirect map with a loop entirely within new rules: A -> B -> C -> A
-        let mut redirects = RedirectsMap::new();
+        let mut redirects = RedirectsMap::new(302);
         let rules = RedirectsSource {
             path: Path::new("test"),
             contents: "/path-a /path-b\n/path-b /path-c\n/path-c /path-a".to_string(),
@@ -635,7 +675,7 @@ mod tests {
     #[test]
     fn test_loop_with_existing_and_new_rules() {
         // First set up the "existing" redirects
-        let mut redirects = RedirectsMap::new();
+        let mut redirects = RedirectsMap::new(302);
         let rules = RedirectsSource {
             path: Path::new("existing"),
             contents: "/existing-1 /existing-2\n/existing-2 /existing-3".to_string(),
@@ -679,7 +719,7 @@ mod tests {
     #[test]
     fn test_self_referential_loop() {
         // Create a redirect map with a self-referential loop
-        let mut redirects = RedirectsMap::new();
+        let mut redirects = RedirectsMap::new(302);
         let rules = RedirectsSource {
             path: Path::new("new"),
             contents: "/self-loop /self-loop".to_string(),
@@ -699,7 +739,7 @@ mod tests {
     #[test]
     fn test_no_loops() {
         // Create a redirect map with redirects that don't form a loop
-        let mut redirects = RedirectsMap::new();
+        let mut redirects = RedirectsMap::new(302);
         let rules = RedirectsSource {
             path: Path::new("test"),
             contents: "/start /middle\n/middle /end".to_string(),
@@ -731,6 +771,7 @@ mod tests {
         let result = RedirectsMap::build(
             &existing_content,
             &new_sources,
+            302,
             &ValidationBehaviors::default(),
         );
 
@@ -767,6 +808,7 @@ mod tests {
         let result = RedirectsMap::build(
             &existing_content,
             &new_readers,
+            302,
             &ValidationBehaviors::default(),
         );
 
@@ -799,6 +841,7 @@ mod tests {
         let result = RedirectsMap::build(
             &existing_content,
             &new_sources,
+            302,
             &ValidationBehaviors::default(),
         );
 
@@ -813,7 +856,7 @@ mod tests {
 
     #[test]
     fn test_invalid_line_behavior_error() {
-        let mut redirects = RedirectsMap::new();
+        let mut redirects = RedirectsMap::new(302);
         let rules = RedirectsSource {
             path: Path::new("invalid"),
             contents: "/valid /target\ninvalid line\n/another /valid".to_string(),
@@ -839,7 +882,7 @@ mod tests {
 
     #[test]
     fn test_invalid_line_behavior_warn() {
-        let mut redirects = RedirectsMap::new();
+        let mut redirects = RedirectsMap::new(302);
         let rules = RedirectsSource {
             path: Path::new("invalid"),
             contents: "/valid /target\ninvalid line\n/another /valid".to_string(),
@@ -859,7 +902,7 @@ mod tests {
 
     #[test]
     fn test_invalid_line_behavior_ignore() {
-        let mut redirects = RedirectsMap::new();
+        let mut redirects = RedirectsMap::new(302);
         let rules = RedirectsSource {
             path: Path::new("invalid"),
             contents: "/valid /target\ninvalid line\n/another /valid".to_string(),
@@ -882,7 +925,7 @@ mod tests {
 
     #[test]
     fn test_self_loop_behavior_error() {
-        let mut redirects = RedirectsMap::new();
+        let mut redirects = RedirectsMap::new(302);
         let rules = RedirectsSource {
             path: Path::new("self_loop"),
             contents: "/a /a".to_string(),
@@ -925,7 +968,7 @@ mod tests {
 
     #[test]
     fn test_chain_shortening() {
-        let mut redirects = RedirectsMap::new();
+        let mut redirects = RedirectsMap::new(302);
         let rules = RedirectsSource {
             path: Path::new("chains"),
             contents: "/a /b\n/b /c\n/c /d\n/x /y\n/y /z".to_string(),
@@ -959,6 +1002,7 @@ mod tests {
                 existing_rules: vec![existing_path.clone()],
                 add_rules: vec![new_path.clone()],
             },
+            default_status_code: 302,
             output: Output {
                 output_dir: dir.path().to_path_buf(),
                 rules_output_file: "output.txt".to_string(),
@@ -1000,6 +1044,7 @@ mod tests {
                 existing_rules: vec![existing_path.clone()],
                 add_rules: vec![new_path.clone()],
             },
+            default_status_code: 302,
             output: Output {
                 output_dir: dir.path().to_path_buf(),
                 rules_output_file: "output.txt".to_string(),
@@ -1040,6 +1085,7 @@ mod tests {
                 existing_rules: vec![existing_path.clone()],
                 add_rules: vec![new_path.clone()],
             },
+            default_status_code: 302,
             output: Output {
                 output_dir: dir.path().to_path_buf(),
                 rules_output_file: "output.txt".to_string(),
@@ -1062,7 +1108,7 @@ mod tests {
 
     #[test]
     fn test_inline_comments() {
-        let mut redirects = RedirectsMap::new();
+        let mut redirects = RedirectsMap::new(302);
         let rules = RedirectsSource {
             path: Path::new("comments"),
             contents: "/valid /target # This is a comment\n/another /valid  # Comment with spaces\n# Just a comment line\n/no-comment /here".to_string(),
@@ -1083,7 +1129,7 @@ mod tests {
 
     #[test]
     fn test_inline_comment_invalid_rule() {
-        let mut redirects = RedirectsMap::new();
+        let mut redirects = RedirectsMap::new(302);
         let rules = RedirectsSource {
             path: Path::new("invalid_comment"),
             contents: "/invalid # comment".to_string(),
@@ -1114,7 +1160,7 @@ mod tests {
 
     #[test]
     fn test_hash_in_path_not_a_comment() {
-        let mut redirects = RedirectsMap::new();
+        let mut redirects = RedirectsMap::new(302);
         let rules = RedirectsSource {
             path: Path::new("hash_path"),
             contents: "/path#frag /target".to_string(),
@@ -1132,5 +1178,170 @@ mod tests {
                 .message
                 .contains("Missing target")
         );
+    }
+
+    #[test]
+    fn test_parse_line_with_status_code() {
+        let mut redirects = RedirectsMap::new(302);
+        let rules = RedirectsSource {
+            path: Path::new("test"),
+            contents: "/source /target 301\n/source2 /target2".to_string(),
+        };
+        redirects.add_rules(&rules, &ValidationBehaviors::default());
+        assert_eq!(redirects.map.get("/source").unwrap().status_code, 301);
+        assert_eq!(redirects.map.get("/source2").unwrap().status_code, 302); // Default
+    }
+
+    #[test]
+    fn test_invalid_status_codes() {
+        let mut redirects = RedirectsMap::new(302);
+        let rules = RedirectsSource {
+            path: Path::new("test"),
+            contents: "/source /target abc\n/source2 /target2 200\n/source3 /target3 600"
+                .to_string(),
+        };
+        redirects.add_rules(&rules, &ValidationBehaviors::default());
+
+        // Status code abc is non-numeric - should be an error
+        assert!(!redirects.map.contains_key("/source"));
+
+        // Status code 200 is valid HTTP but not a redirect - should be an error
+        assert!(!redirects.map.contains_key("/source2"));
+
+        // Status code 600 is out of range - should be an error
+        assert!(!redirects.map.contains_key("/source3"));
+
+        // Check we have 3 parse errors
+        assert_eq!(redirects.parse_errors.len(), 3);
+    }
+
+    #[test]
+    fn test_valid_redirect_status_codes() {
+        let mut redirects = RedirectsMap::new(302);
+        let rules = RedirectsSource {
+            path: Path::new("test"),
+            contents: "/source1 /target1 301\n/source2 /target2 302\n/source3 /target3 307\n/source4 /target4 308".to_string(),
+        };
+        redirects.add_rules(&rules, &ValidationBehaviors::default());
+
+        assert_eq!(redirects.map.get("/source1").unwrap().status_code, 301);
+        assert_eq!(redirects.map.get("/source2").unwrap().status_code, 302);
+        assert_eq!(redirects.map.get("/source3").unwrap().status_code, 307);
+        assert_eq!(redirects.map.get("/source4").unwrap().status_code, 308);
+        assert_eq!(redirects.map.len(), 4);
+        assert_eq!(redirects.parse_errors.len(), 0);
+    }
+
+    #[test]
+    fn test_status_codes_in_file_output() -> Result<()> {
+        let dir = tempdir()?;
+        let output_path = dir.path().join("output.txt");
+
+        let mut redirects = RedirectsMap::new(302);
+        let rules = RedirectsSource {
+            path: Path::new("test"),
+            contents: "/source1 /target1 301\n/source2 /target2".to_string(),
+        };
+        redirects.add_rules(&rules, &ValidationBehaviors::default());
+
+        redirects.write_to_file(&output_path, None)?;
+
+        let output_content = read_to_string(&output_path)?;
+        let lines: Vec<&str> = output_content.lines().collect();
+
+        assert!(lines.contains(&"/source1 /target1 301"));
+        assert!(lines.contains(&"/source2 /target2")); // Default 302 is omitted
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_status_codes_with_chain_shortening() {
+        let mut redirects = RedirectsMap::new(302);
+        let rules = RedirectsSource {
+            path: Path::new("chains"),
+            contents: "/a /b 301\n/b /c 301\n/c /d 301".to_string(),
+        };
+        redirects.add_rules(&rules, &ValidationBehaviors::default());
+        assert!(redirects.parse_errors.is_empty());
+
+        redirects.shorten_chains().unwrap();
+
+        // Verify the shortened chains use the status code from the final target
+        assert_eq!(redirects.map.get("/a").unwrap().to, "/d");
+        assert_eq!(redirects.map.get("/a").unwrap().status_code, 301);
+
+        assert_eq!(redirects.map.get("/b").unwrap().to, "/d");
+        assert_eq!(redirects.map.get("/b").unwrap().status_code, 301);
+    }
+
+    #[test]
+    fn test_mixed_status_codes_and_defaults() {
+        let mut redirects = RedirectsMap::new(302);
+        let rules = RedirectsSource {
+            path: Path::new("mixed"),
+            contents: "/page1 /page2\n/page2 /page3 301\n/page3 /page4\n/page4 /page5".to_string(),
+        };
+        redirects.add_rules(&rules, &ValidationBehaviors::default());
+
+        assert_eq!(redirects.map.get("/page1").unwrap().status_code, 302); // Default
+        assert_eq!(redirects.map.get("/page2").unwrap().status_code, 301); // Explicit
+        assert_eq!(redirects.map.get("/page3").unwrap().status_code, 302); // Default
+        assert_eq!(redirects.map.get("/page4").unwrap().status_code, 302); // Explicit
+
+        redirects.shorten_chains().unwrap();
+
+        // First rule isn't eliminated because it has a different status code
+        assert_eq!(redirects.map.get("/page1").unwrap().to, "/page2");
+        assert_eq!(redirects.map.get("/page1").unwrap().status_code, 302);
+
+        // Same for the second rule
+        assert_eq!(redirects.map.get("/page2").unwrap().to, "/page3");
+        assert_eq!(redirects.map.get("/page2").unwrap().status_code, 301);
+
+        // The third and fourth rules use the same status code, so the chain is shortened
+        assert_eq!(redirects.map.get("/page3").unwrap().to, "/page5");
+        assert_eq!(redirects.map.get("/page3").unwrap().status_code, 302);
+    }
+
+    #[test]
+    fn test_custom_status_code_serialization() -> Result<()> {
+        let dir = tempdir()?;
+        let existing_path = dir.path().join("existing.txt");
+        let new_path = dir.path().join("new.txt");
+        let output_path = dir.path().join("output.txt");
+
+        let existing_content = format!("{GENERATED_FILE_HEADER}\n/old /intermediate 301");
+        let new_content = "/intermediate /new 308\n/another /rule 307";
+        std::fs::write(&existing_path, &existing_content)?;
+        std::fs::write(&new_path, new_content)?;
+
+        let args = Args {
+            rule_files: RuleFiles {
+                existing_rules: vec![existing_path.clone()],
+                add_rules: vec![new_path.clone()],
+            },
+            default_status_code: 302,
+            output: Output {
+                output_dir: dir.path().to_path_buf(),
+                rules_output_file: "output.txt".to_string(),
+                encoded_sources: "sources.fst".to_string(),
+                encoded_targets: "targets.fcsd".to_string(),
+            },
+            include_existing: true,
+            behaviors: ValidationBehaviors::default(),
+        };
+
+        run(&args)?;
+
+        let output_content = read_to_string(&output_path)?;
+        let lines: HashSet<&str> = output_content.lines().collect();
+
+        // No shortening because of different status codes, so all rules should be present
+        assert!(lines.contains("/old /intermediate 301"));
+        assert!(lines.contains("/intermediate /new 308"));
+        assert!(lines.contains("/another /rule 307"));
+
+        Ok(())
     }
 }
