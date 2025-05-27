@@ -14,7 +14,14 @@ const guard = async function (req: Request, event: FetchEvent, config: Config): 
       if (config.trackBlockedRequests) {
         event.waitUntil(trackBlockedRequest(req));
       }
-      return new Response(null, { status: config.blockStatusCode });
+      let headers: any = {};
+      if (!!config.blockLocation) {
+        headers['location'] = config.blockLocation;
+      }
+      return new Response(null, {
+        status: config.blockStatusCode,
+        headers: headers
+      });
     }
   } catch (err) {
     console.log(`Error while checking block window: ${err}`);
@@ -39,8 +46,8 @@ addEventListener('fetch', async (event: FetchEvent) => {
   const origin = Variables.get("origin");
   const blockUntil = Variables.get("block_until");
   const trackBlockedRequests = Variables.get("track_blocked_requests");
-
-  let blockStatusCode = Variables.get("block_status_Code");
+  const blockLocation = Variables.get("block_location");
+  let blockStatusCode = Variables.get("block_status_code");
 
   if (!origin || !blockUntil || !isValidDate(blockUntil)) {
     console.log("Terminating with 500 as origin or blockUntil are not configured");
@@ -55,6 +62,7 @@ addEventListener('fetch', async (event: FetchEvent) => {
     config: {
       origin,
       blockUntil,
+      blockLocation,
       // variables are read as strings, convert status to number
       blockStatusCode: +blockStatusCode,
       // variables are read as string check if tracking of blocked requests is set to true

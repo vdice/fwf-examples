@@ -12,6 +12,7 @@ The Spin application could be configured using settings specified in the followi
 | `origin` | `Yes` | none | The desired origin url |
 | `block_until` | `Yes` | none | `string` representation of the UTC timestamp until inbound requests will be blocked |
 | `block_status_code` | `No` | `404` | Which HTTP status code should be sent during block period |
+| `block_location` | `No` | `` | Could act as redirect if proper status is configured as well |
 | `track_blocked_requests` | `No` | `true` | Valid values are either `true` or `false`. If `true`, incoming requests are logged to a key value store |
 
 
@@ -34,6 +35,8 @@ Use the `spin up` command for running the application:
 
 ```console
 export SPIN_VARIABLE_ORIGIN=https://fermyon.com
-export SPIN_VARIABLE_BLOCK_UNTIL="Mon, 24 Feb 2025 13:56:08 GMT"
+export SPIN_VARIABLE_BLOCK_UNTIL="Wed, 14 May 2025 10:56:08 GMT"
+export SPIN_VARIABLE_BLOCK_STATUS_CODE=301
+export SPIN_VARIABLE_BLOCK_LOCATION=https://google.com
 spin up
 ```

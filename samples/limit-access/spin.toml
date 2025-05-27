@@ -10,6 +10,7 @@ version = "0.1.0"
 origin = { required = true }
 block_until = { required = true }
 block_status_code = { default = "404" }
+block_location = { default = "" }
 track_blocked_requests = { default = "true" }
 
 [[trigger.http]]
@@ -26,6 +27,7 @@ key_value_stores = ["default"]
 origin = "{{ origin }}"
 block_until = "{{ block_until }}"
 block_status_code = "{{ block_status_code }}"
+block_location = "{{ block_location }}"
 track_blocked_requests = "{{ track_blocked_requests }}"
 
 [component.limit-access.build]
