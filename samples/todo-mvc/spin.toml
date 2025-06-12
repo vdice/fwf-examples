@@ -20,7 +20,7 @@ files = [{ source = "frontend/dist", destination = "/" }]
 environment = { FALLBACK_PATH = "index.html" }
 
 [component.frontend.build]
-command = "npm run build"
+command = "npm install && npm run build"
 workdir = "frontend"
 
 
