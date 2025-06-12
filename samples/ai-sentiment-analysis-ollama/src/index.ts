@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import type { Context, Next } from 'hono'
+// restoreLocation is required because zod access `location` during global scope evaluation
 import { restoreLocation } from './fix'
 import * as kv from '@spinframework/spin-kv'
 import * as variables from '@spinframework/spin-variables'
@@ -34,6 +35,11 @@ negative
 [/INST]
 
 User: {sentence}`;
+
+const prompt = new PromptTemplate({
+  inputVariables: ['sentence'],
+  template: SentimentAnalysisPromptTemplate,
+})
 
 interface SentimentAnalysisResponse {
   sentiment: 'neutral' | 'positive' | 'negative'
@@ -78,10 +84,7 @@ app.post('/api/sentiment-analysis', async (c: Context) => {
     maxRetries: 2,
     numPredict: 6
   })
-  const prompt = new PromptTemplate({
-    inputVariables: ['sentence'],
-    template: SentimentAnalysisPromptTemplate,
-  })
+
   const formattedPrompt = await prompt.format({
     sentence: sentence,
   })
