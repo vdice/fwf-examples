@@ -1,0 +1,52 @@
+spin_manifest_version = 2
+
+[application]
+authors = ["Fermyon Engineering <engineering@fermyon.com>"]
+description = "AI Sentiment Analysis (Ollama Edition)"
+name = "ai-sentiment-analysis-ollama"
+version = "0.1.0"
+
+[variables]
+ollama_api_url = { required = true }
+ollama_model_identifier = { default = "llama3.2:latest" }
+kv_explorer_user = { required = true }
+kv_explorer_password = { required = true }
+
+[[trigger.http]]
+route = "/api/..."
+component = "ai-sentiment-analysis"
+
+[[trigger.http]]
+route = "/..."
+component = "frontend"
+
+[[trigger.http]]
+component = "kv-explorer"
+route = "/internal/kv-explorer/..."
+
+[component.ai-sentiment-analysis]
+source = "dist/ai-sentiment-analysis.wasm"
+exclude_files = ["**/node_modules"]
+key_value_stores = ["default"]
+allowed_outbound_hosts = ["{{ ollama_api_url }} "]
+
+[component.ai-sentiment-analysis.variables]
+ollama_api_url = "{{ ollama_api_url }}"
+ollama_model_identifier = "{{ ollama_model_identifier }}"
+
+[component.ai-sentiment-analysis.build]
+command = ["npm install", "npm run build"]
+watch = ["src/**/*.ts"]
+
+[component.kv-explorer]
+source = { url = "https://github.com/fermyon/spin-kv-explorer/releases/download/v0.10.0/spin-kv-explorer.wasm", digest = "sha256:65bc286f8315746d1beecd2430e178f539fa487ebf6520099daae09a35dbce1d" }
+allowed_outbound_hosts = ["redis://*:*", "mysql://*:*", "postgres://*:*"]
+key_value_stores = ["default"]
+
+[component.kv-explorer.variables]
+kv_credentials = "{{ kv_explorer_user }}:{{ kv_explorer_password }}"
+
+
+[component.frontend]
+source = { url = "https://github.com/fermyon/spin-fileserver/releases/download/v0.3.0/spin_static_fs.wasm", digest = "sha256:ef88708817e107bf49985c7cefe4dd1f199bf26f6727819183d5c996baa3d148" }
+files = [{ source = "assets", destination = "/" }]
