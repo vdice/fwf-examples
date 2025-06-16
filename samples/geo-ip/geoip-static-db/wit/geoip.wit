@@ -1,0 +1,21 @@
+package fermyon:geoip;
+
+interface lookup {
+    lookup: func(ip: string) -> result<location, error>;
+    record location {
+        country: string,
+        city: string,
+        latitude: f64,
+        longitude: f64,
+    }
+
+    enum error {
+        invalid-ip,
+        not-found,
+        internal,
+    }
+}
+
+world geoip {
+    export lookup;
+}
