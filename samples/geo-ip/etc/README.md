@@ -1,0 +1,1 @@
+This directory contains a GeoIP test database sourced from the MaxMindDB spec repo found here: https://github.com/maxmind/MaxMind-DB/tree/main/source-data
