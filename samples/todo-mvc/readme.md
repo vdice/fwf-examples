@@ -9,7 +9,7 @@ The app uses the Key-Value store for persisting todos.
 
 ## Building the Application
 
-The application is built using the `spin build` command. As the `frontend` is implement using VueJS and the `api` is implemented with TinyGo, Node.JS and TinyGo must be installed on the system before invoking `spin build`
+The application is built using the `spin build` command. As the `frontend` is implemented using VueJS and the `api` is implemented with TinyGo, Node.JS and TinyGo must be installed on the system before invoking `spin build`
 
 ## Running locally
 
