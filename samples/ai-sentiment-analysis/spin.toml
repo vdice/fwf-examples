@@ -7,13 +7,13 @@ version = "0.1.0"
 
 [[component]]
 id = "sentiment-analysis"
-source = "target/wasm32-wasi/release/sentiment_analysis.wasm"
+source = "target/wasm32-wasip1/release/sentiment_analysis.wasm"
 key_value_stores = ["default"]
 ai_models = ["llama2-chat"]
 [component.trigger]
 route = "/api/..."
 [component.build]
-command = "cargo build --target wasm32-wasi --release"
+command = "cargo build --target wasm32-wasip1 --release"
 watch = ["src/**/*.rs", "Cargo.toml"]
 
 [[component]]
