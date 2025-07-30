@@ -6,8 +6,24 @@ on:
     branches: [main]
 
 jobs:
-  test:
-    runs-on: "ubuntu-latest"
+  generate-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      apps: ${{ steps.set-matrix.outputs.apps }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find all apps
+        id: set-matrix
+        run: |
+          echo "apps=$(make echo-apps-json)" >> "$GITHUB_OUTPUT"
+
+  test-app:
+    needs: generate-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: ${{ fromJson(needs.generate-matrix.outputs.apps) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -27,6 +43,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23'
+          cache: false
 
       - name: Setup TinyGo
         uses: acifani/setup-tinygo@v2
@@ -42,15 +59,15 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build apps
+      - name: Build ${{ matrix.app }}
         env:
+          APPS: ${{ matrix.app }}
           ENABLE_WASM_OPT: false
-        run: |
-          make build-samples build-tutorials
+        run: make build-apps
 
-      - name: Test apps
+      - name: Test ${{ matrix.app }}
         env:
+          APPS: ${{ matrix.app }}
           ENABLE_WASM_OPT: false
           TIMEOUT: 2m
-        run: |
-          make test-samples test-tutorials
+        run: make test-apps

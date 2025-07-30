@@ -4,7 +4,7 @@ build:
 	cd geoip-static-db && ./build.sh geoip.mmdb
 	cargo build --target wasm32-wasip1 --release
 
-.PHONY: create-test-mmdb
-create-test-mmdb:
+.PHONY: setup-for-test
+setup-for-test:
 	cp ./etc/GeoIP2-City-Test.mmdb \
 		./geoip-static-db/geoip.mmdb
