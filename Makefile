@@ -1,6 +1,6 @@
 SHELL    := /bin/bash
 MAKE_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
-APPS     ?= $(shell find ./samples ./tutorials -mindepth 1 -maxdepth 1 -type d)
+APPS     ?= $(shell find ./samples ./tutorials -type f -name 'spin.toml' -exec dirname {} \; | sort -u)
 
 default: build-apps
 
