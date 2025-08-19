@@ -49,6 +49,18 @@ Rules must follow these conventions:
 - If provided, status codes must be valid
   [HTTP Redirection messages](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status#redirection_messages)
 
+### Generating test rules
+
+The `generate-rules.py` script can be used to generate test rules files adhering to the above requirements. It takes
+some arguments (use `--help` for details) for configuring the number of rules and their properties, and prints the
+result to stdout. Here's an example of using it to generate 100,000 rules:
+
+```shell
+python generate-rules.py -n 100000
+```
+
+To adjust the set of words used, edit the script itself.
+
 ### Run the CLI
 
 ```shell
