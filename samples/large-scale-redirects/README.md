@@ -56,7 +56,7 @@ some arguments (use `--help` for details) for configuring the number of rules an
 result to stdout. Here's an example of using it to generate 100,000 rules:
 
 ```shell
-python generate-rules.py -n 100000
+python generate-rules.py -n 100000 > redirects.txt
 ```
 
 To adjust the set of words used, edit the script itself.
