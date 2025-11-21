@@ -27,9 +27,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Wasm Rust target
+      - name: Install Wasm Rust target(s)
         run: |
-          rustup target add wasm32-wasip1
+          rustup target add wasm32-wasip1 wasm32-wasip2
 
       - name: Install wizer
         env:
