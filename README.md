@@ -2,33 +2,74 @@
 
 ## Tutorials
 
-- [Using the Key Value Store](./tutorials/key-value-store-tutorial/)
+- [Key Value Store](./tutorials/key-value-store-tutorial/)
+  - This folder contains the sample application written as part of the [Using the Key Value Store](https://developer.fermyon.com/wasm-functions/using-key-value-store) tutorial.
 - [Querying PostgreSQL](./tutorials/postgresql-tutorial/)
+  - This folder contains the sample application written as part of the [Querying PostgreSQL tutorial](https://developer.fermyon.com/wasm-functions/querying-postgresql).
 - [Querying MySQL](./tutorials/mysql-tutorial/)
-- [Building a Supabase Cache Proxy](./tutorials/supabase-proxy-tutorial/)
+  - This folder contains the sample application written as part of the [Querying MySQL tutorial](https://developer.fermyon.com/wasm-functions/querying-linode-mysql).
 - [Stream Data from Linode Object Store](./tutorials/stream-data-from-linode-object-store-tutorial/)
+  - This folder contains the sample application written as part of the [Stream Data from Linode Object Store tutorial](https://developer.fermyon.com/wasm-functions/stream-data-from-linode-object-store)
+- [Supabase Cache Proxy](./tutorials/supabase-proxy-tutorial/)
+  - This folder contains the sample application written as part of the [Build a Cache Proxy For Supabase tutorial](https://developer.fermyon.com/wasm-functions/supabase-cache-proxy)
 
 ## Examples
 
 - [A/B Testing using Cookies](./samples/ab-testing-cookie/)
+  - This folder contains a Spin application showcasing how to implement A/B testing based on a cookie.
 - [A/B Testing using Key-Value Store](./samples/ab-testing-kv/)
+  - This folder contains a Spin application providing different samples for doing A/B testing on Fermyon Wasm Functions.
 - [A/B Testing using HTTP Headers (e.g User Agent)](./samples/ab-testing-user-agent/)
+  - This folder contains a Spin application that demonstrates how to implement A/B testing based on the user agent.
+- [Aggregate JSON](./samples/aggregate-json/)
+  - This sample shows how to make concurrent outgoing HTTP requests and combine the results.
 - [AI Sentiment Analysis](./samples/ai-sentiment-analysis/)
+  - This repository contains an API that performs sentiment analysis and a simple UI to interact with it.
 - [AI Sentiment Analysis (Ollama Edition)](./samples/ai-sentiment-analysis-ollama/)
+  - This sample illustrates how to build an AI Sentiment Analysis API using a configurable Large Language Model (LLM) hosted on Ollama.
 - [Alter Response Headers](./samples/alter-headers/)
+  - This sample shows how to alter the headers as you stream a response from an origin server back to a client.
 - [Auto-Complete API](./samples/auto-complete/)
+  - This sample shows how you can implement an API to support autocompletion for input boxes.
+- [Bulk Redirects](./samples/bulk-redirects/)
+  - This sample illustrates how you could bulk redirect requests using an object to map incoming requests to a configured redirection target.
 - [Cookie Parsing](./samples/parse-cookie/)
-- [Large-Scale Redirects](./samples/large-scale-redirects/)
-- [Traffic Filtering: Block By IP address](./samples/block-by-ip/)
-- [Traffic Filtering: Block By user country](./samples/block-by-country/)
-- [Traffic mirroring and splitting](./samples/traffic-splitting/)
-- [Reading the Body of a POST Request](./samples/read-post/)
-- [Respond with Another Site](./samples/respond-with-another-site/)
-- [Response Header Modification](./samples/response-header-modification/)
-- [Promo Code Validation](./samples/validate-promo-codes/)
+  - This sample demonstrates cookie parsing using the NPM `cookie` package.
 - [Early Hints with HarperDB](./samples/early-hints-rust)
-- [Limit Access](./samples/limit-access/)
-- [GitHub GraphQL queries](./samples/graphql-stargazer/)
-- [TodoMVC (VueJS + TinyGo + Key-Value Store)](./samples/todo-mvc/)
-- [JWT Validator](./samples/jwt-validator/)
+  - This sample showcases using Fermyon Wasm Functions to query HarperDB for early hints.
 - [Fetch JSON](./samples/fetch-json)
+  - This example shows how to fetch data via a GET request, read in JSON and return the results.
+- [GeoIP](./samples/geo-ip/)
+  - This sample shows how to build a library component that uses a maxminddb to provide geoip information. The application component consumes the geoip component as a dependency querying the geoip database upon HTTP request.
+- [GitHub GraphQL queries](./samples/graphql-stargazer/)
+  - This sample illustrates how to send GraphQL queries using a popular Rust library.
+- [HTML Rewrite](./samples/html-rewrite/)
+  - TypeScript and Rust implementations for a Spin app that does HTML rewriting using CSS selectors.
+- [JWT Validator](./samples/jwt-validator/)
+  - This folder contains a Spin application which is able to validate JWT tokens issued by any OAuth 2.0 & OpenID Connect compliant Identity Provider (or Token Issuer).
+- [Large-Scale Redirects](./samples/large-scale-redirects/)
+  - A high-performance, large-scale HTTP redirect service implemented as a Spin application.
+- [Limit Access](./samples/limit-access/)
+  - This Spin application is designed to limit access to a given origin, until a configurable point in time has reached. Incoming requests hitting the Spin application before the desired point in time has been reached, won't be forwarded to the origin. Instead a configurable HTTP status code will be returned.
+- [Linode Object Storage Streaming](./samples/linode-object-storage-streaming/)
+  - This is a sample function that streams a file from Linode Object storage and applies a transformation to each chunk.
+- [Promo Code Validation](./samples/validate-promo-codes/)
+  - This Spin application illustrates how one could validate promo codes stored in a Key Value Store.
+- [Reading the Body of a POST Request](./samples/read-post/)
+  - This sample illustrates how to read the body of an HTTP POST request.
+- [Respond with Another Site](./samples/respond-with-another-site/)
+  - This sample shows a Fermyon Wasm Function that responds to all `GET` requests with the response from another site (in this case a 'random animal facts' sample).
+- [Response Header Modification](./samples/response-header-modification/)
+  - This folder contains a Spin app, that is allowed to make outbound HTTP requests to the [Star Wars API](https://swapi.dev). Upon calling the origin (Star Wars API), the `accept` header from the incoming request is used (if not specified it's defaulting to `*/*`).
+- [Rewrite for bots](./samples/rewrite-for-bots-price-hiding/)
+  - This sample shows a Wasm Function that defends against price scraping while still enabling scraper bots to 'see' product information.
+- [TodoMVC (VueJS + TinyGo + Key-Value Store)](./samples/todo-mvc/)
+  - This Spin application consists of two major components:
+    - `frontend`: Vue JS frontend for managing todos borrowed from TodoMVC
+    - `api`: HTTP API exposing different endpoints for managing todos (implemented using TinyGo)
+- [Traffic Filtering: Block By IP address](./samples/block-by-ip/)
+  - This sample illustrates how you could block clients from accessing a particular resource by maintaining an IP address block list.
+- [Traffic Filtering: Block By user country](./samples/block-by-country/)
+  - This sample illustrates how you could block clients from accessing a particular resource by maintaining an Country blocklist.
+- [Traffic mirroring and splitting](./samples/traffic-splitting/)
+  - A small traffic monitoring application.
